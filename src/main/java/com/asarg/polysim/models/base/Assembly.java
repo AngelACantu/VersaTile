@@ -52,6 +52,7 @@ public class Assembly extends Observable {
     public Assembly() {
         tileSystem = new TileSystem(2, 0);
         frontier = new Frontier(tileSystem);
+
     }
 
     public Assembly(TileSystem ts) {
@@ -67,6 +68,53 @@ public class Assembly extends Observable {
         frontier = new Frontier(tileSystem);
     }
 
+    public bondGraph getBondGraph(){
+        Set<Map.Entry<Coordinate, Tile>> tiles = Grid.entrySet();
+        bondGraph bondGraph = new bondGraph();
+
+        for (Map.Entry<Coordinate, Tile> mep : tiles) {
+            Coordinate pt = mep.getKey();
+            Tile tile = mep.getValue();
+            if (tile.getGlueW() != null || tile.getGlueN() != null || tile.getGlueE() != null || tile.getGlueS() != null) {
+                bondGraph.addBondVertex(tile, tile.getLabel(), pt, tile.getGlueN(),
+                        tile.getGlueS(), tile.getGlueW(), tile.getGlueE());
+            }
+        }
+        for (bondGraph.Vertex v : bondGraph.vertices){
+            for (bondGraph.Vertex vertex : bondGraph.vertices){
+                if (v == vertex){
+
+                }
+                else{
+                    if (v.location.getEast().equals(vertex.location)){
+                        int strength = tileSystem.getStrength(v.E, vertex.W);
+                        if (strength != 0){
+                            v.addEdge(v.thisTile, vertex.thisTile, vertex, strength, "E");
+                        }
+                    }
+                    else if (v.location.getWest().equals(vertex.location)){
+                        int strength = tileSystem.getStrength(v.W, vertex.E);
+                        if (strength != 0){
+                            v.addEdge(v.thisTile, vertex.thisTile, vertex, strength, "W");
+                        }
+                    }
+                    else if (v.location.getNorth().equals(vertex.location)){
+                        int strength = tileSystem.getStrength(v.N, vertex.S);
+                        if (strength != 0){
+                            v.addEdge(v.thisTile, vertex.thisTile, vertex, strength, "N");
+                        }
+                    }
+                    else if (v.location.getSouth().equals(vertex.location)){
+                        int strength = tileSystem.getStrength(v.S, vertex.N);
+                        if (strength != 0){
+                            v.addEdge(v.thisTile, vertex.thisTile, vertex, strength, "S");
+                        }
+                    }
+                }
+            }
+        }
+        return bondGraph;
+    }
     //change tile system stub
     public void changeTileSystem(TileSystem newTS) {
         System.out.println("WARNING: CHANGING THE TILE SYSTEM, PREPARE FOR ERRORS!");
@@ -84,6 +132,26 @@ public class Assembly extends Observable {
     public void changeTemperature(int temperature) {
         tileSystem.setTemperature(temperature);
         changeTileSystem(tileSystem);
+
+        ////////////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////
+        //For now:
+        //Changing the temperature gets you the bond graph (works like a button)
+        bondGraph bond_graph = getBondGraph();
+        //Also, computes MinCut on the bond graph (when needed)
+        //you must pass it the temperature of the system, so it knows what cut to return
+        ArrayList<bondGraph.Edge> cutMe = bond_graph.getMinCut(tileSystem.getTemperature());
+        //here we print the edges which are to be cut
+        //each edge in the list cutMe has tileFrom and tileTo, which are of type: Tile
+        if (!cutMe.isEmpty()){
+            System.out.print("\nCut the following edges: ");
+            for (bondGraph.Edge e : cutMe){
+                System.out.print("\n" + e.tileFrom.getLabel() + "->" + e.tileTo.getLabel());
+            }
+        }
+        ////////////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////
+        System.out.print("\nSuccess");
     }
 
     public void changeTileConfiguration(TileConfiguration tc) {
