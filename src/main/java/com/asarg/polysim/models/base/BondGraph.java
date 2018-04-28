@@ -5,33 +5,27 @@ import java.util.*;
 /**
  * Created by Angel A. Cantu in 2018
  */
-public class bondGraph {
+public class BondGraph {
     private ArrayList<ArrayList<Vertex>> preFaceVertices = new ArrayList<ArrayList<Vertex>>();
     private ArrayList<faceVertex> face_vertices = new ArrayList<>();
-    private List<Vertex> markedOnes = new ArrayList<>();
     private int totalAmountOfEdges = 0;
-    public List<Vertex> vertices = new ArrayList<>();
+    private List<Vertex> vertices = new ArrayList<>();
+
 
     public class Vertex {
-        public Tile thisTile;
-        public String tileLabel;
-        public String realTileLabel;
-        public String N;
-        public String W;
-        public String S;
-        public String E;
-        public Coordinate location;
-
+        private Tile thisTile;
+        private String vertexLabel;
+        private Coordinate location;
         private ArrayList<Border> itsBoundary = new ArrayList<Border>();
         private List<Edge> neighbors = new ArrayList<>();
-        private int mark = 0;
-        private int pathMark = 0;
-        private int edgeAmount = 0;
-        private int boundaryFlag = 0;
         private Edge northNeighbor;
         private Edge southNeighbor;
         private Edge westNeighbor;
         private Edge eastNeighbor;
+        private int mark = 0;
+        private int pathMark = 0;
+        private int edgeAmount = 0;
+        private int boundaryFlag = 0;
         public void addEdge(Tile from, Tile to, Vertex b, int strength, String where) {
             totalAmountOfEdges++;
             neighbors.add(new Edge(from, to, b, strength, where));
@@ -47,10 +41,16 @@ public class bondGraph {
                 eastNeighbor = e;
             }
         }
+        public Coordinate getLocation() {
+            return location;
+        }
+        public Tile getTile() {
+            return thisTile;
+        }
     }
     public class Edge {
-        public Tile tileFrom;
-        public Tile tileTo;
+        private Tile tileFrom;
+        private Tile tileTo;
         private Vertex toVertex;
         private String direction = "X";
         private int bondStrength = 0;
@@ -63,13 +63,20 @@ public class bondGraph {
             bondStrength = strength;
             direction = dir;
         }
+        public Tile getTileFrom() {
+            return tileFrom;
+        }
+
+        public Tile getTileTo() {
+            return tileTo;
+        }
     }
     private class faceVertex{
+        private int inside = -1;
         private String label;
         private ArrayList<Pair<String, String>> edges = new ArrayList<>();
         private ArrayList<faceEdge> neighbors = new ArrayList<>();
         private ArrayList<Integer> strengths = new ArrayList<>();
-        private int inside = -1;
         private faceVertex(String name){
             label = name;
         }
@@ -90,14 +97,14 @@ public class bondGraph {
     }
     private class Border{
         private String ofPath = "X";
-        private Pair<String, String> inout;
+        private Pair<String, String> inAndOutBorder;
         private Border(String path, String in, String out){
             ofPath = path;
-            inout = new Pair<>(in, out);
+            inAndOutBorder = new Pair<>(in, out);
         }
         private boolean Compare(String x, String y){
             Pair<String, String> c = new Pair<>(x, y);
-            if (inout.equals(c)){
+            if (inAndOutBorder.equals(c)){
                 return true;
             }
             else {
@@ -106,50 +113,65 @@ public class bondGraph {
         }
     }
     private class bellmanGraph{
+        private int amountOfV;
+        private int amountOfE;
+        private bellmanEdge edge[];
+
         private class bellmanEdge {
-            int src, dest, weight, flag, org_src, org_dest, id, redundantFlag;
-            bellmanEdge() {
-                src = dest = weight = flag  = org_dest = org_src = id = redundantFlag = 0;
+            private int src;
+            private int dest;
+            private int weight;
+            private int flag;
+            private int org_src;
+            private int org_dest;
+            private int id;
+            private int redundantFlag;
+            private bellmanEdge() {
+                src = 0;
+                dest = 0;
+                weight = 0;
+                flag = 0;
+                org_dest = 0;
+                org_src = 0;
+                id = 0;
+                redundantFlag = 0;
             }
         }
-        int V;
-        int E;
-        bellmanEdge edge[];
-        bellmanGraph(int v, int e)
-        {
-            V = v;
-            E = e;
-            edge = new bellmanEdge[e];
-            for (int i=0; i<e; ++i)
+        private bellmanGraph(int v, int e) {
+            amountOfV = v;
+            amountOfE = e;
+            edge = new bellmanEdge[amountOfE];
+            for (int i = 0; i < amountOfE; ++i)
                 edge[i] = new bellmanEdge();
         }
     }
-    public void addBondVertex(Tile tile, String label, Coordinate pt, String N, String S, String W, String E) {
+    public List<Vertex> getListOfVertices(){
+        return vertices;
+    }
+    public void addBondVertex(Tile tile, Coordinate pt) {
         Vertex v = new Vertex();
-        v.tileLabel = Integer.toString(vertices.size() - 1);
+        v.vertexLabel = Integer.toString(vertices.size() - 1);
         v.thisTile = tile;
-        v.realTileLabel = label;
         v.location = pt;
-        v.N = N;
-        v.S = S;
-        v.W = W;
-        v.E = E;
         vertices.add(v);
     }
-    public ArrayList getMinCut(int tao) {
-        handleLeafs();
-        getFaces();
+    public List<Edge> getMinCut(int tao) {
+        boolean validAssembly = handleLeafs();
+        if (!validAssembly){
+            return new ArrayList<Edge>();
+        }
+        startGetFaces();
         insideWho();
         makeFaceVertices();
         setUpEdgesDualGraph();
         connectFaceEdges(false);
         connectFaceEdges(true);
         removeRedundantEdges();
-        ArrayList<Edge> cutMe = minCut(tao);
+        List<Edge> cutMe = minCut(tao);
 
         return cutMe;
     }
-    private void handleLeafs(){
+    private boolean handleLeafs(){
         int amountNoFaces = 0;
         while (true) {
             int amount = markLeafs();
@@ -158,10 +180,11 @@ public class bondGraph {
             }
             else if (amountNoFaces == vertices.size() || amount == -1){
                 System.out.print("INVALID ASSEMBLY || NO FACES");
-                return;
+                return false;
             }
             amountNoFaces++;
         }
+        return true;
     }
     private void removeRedundantEdges(){
         for (faceVertex fv : face_vertices){
@@ -183,32 +206,30 @@ public class bondGraph {
             }
         }
     }
-    private ArrayList minCut(int tao){
+    private List<Edge> minCut(int tao){
         List<Integer> s_Belonging = new ArrayList<>();
-        List<Integer> f_Belonging = new ArrayList<>();
+        List<Integer> t_Belonging = new ArrayList<>();
         List<Integer> path = new ArrayList<>();
         for (Vertex s: vertices){
             findFaceOf(s_Belonging, s);
             for (Vertex t : vertices){
-                if (t.tileLabel == s.tileLabel){
-                    f_Belonging.clear();
+                if (t.vertexLabel == s.vertexLabel){
+                    t_Belonging.clear();
                 }
                 else{
                     List<Integer> s_disjunction = new ArrayList<>();
                     s_disjunction.addAll(s_Belonging);
-                    findFaceOf(f_Belonging, t);
-                    s_disjunction.removeAll(f_Belonging);
+                    findFaceOf(t_Belonging, t);
+                    s_disjunction.removeAll(t_Belonging);
 
-                    List<Integer> f_disjunction = new ArrayList<>();
-                    f_disjunction.addAll(s_Belonging);
-                    findFaceOf(f_Belonging, t);
-                    f_disjunction.removeAll(f_Belonging);
+                    List<Integer> t_disjunction = new ArrayList<>();
+                    t_disjunction.addAll(s_Belonging);
+                    findFaceOf(t_Belonging, t);
+                    t_disjunction.removeAll(t_Belonging);
 
                     for (Integer s_vertex : s_Belonging){
-                        for (Integer f_vertex : f_Belonging) {
-                            if (f_vertex.equals(s_vertex)) {
-
-                            } else {
+                        for (Integer f_vertex : t_Belonging) {
+                            if (!(f_vertex.equals(s_vertex))) {
                                 if (s_vertex == -1){
                                     s_vertex = face_vertices.size() - 1;
                                 }
@@ -222,7 +243,8 @@ public class bondGraph {
                                     for (Pair i : cutPath){
                                         for (Vertex v : vertices){
                                             for (Edge e : v.neighbors){
-                                                if (i.getValue().equals(Integer.parseInt(e.toVertex.tileLabel)) && i.getKey().equals(Integer.parseInt(v.tileLabel))){
+                                                if (i.getValue().equals(Integer.parseInt(e.toVertex.vertexLabel))
+                                                        && i.getKey().equals(Integer.parseInt(v.vertexLabel))){
                                                     cutMe.add(e);
                                                 }
                                             }
@@ -237,7 +259,7 @@ public class bondGraph {
                         }
                     }
                 }
-                f_Belonging.clear();
+                t_Belonging.clear();
             }
             s_Belonging.clear();
         }
@@ -246,7 +268,7 @@ public class bondGraph {
     private void findFaceOf(List<Integer> s_t_Belonging, Vertex s_t){
         for (faceVertex fc : face_vertices){
             for (faceEdge fe : fc.neighbors){
-                if (s_t.tileLabel.equals(fe.original_source) || s_t.tileLabel.equals(fe.original_to)){
+                if (s_t.vertexLabel.equals(fe.original_source) || s_t.vertexLabel.equals(fe.original_to)){
                     s_t_Belonging.add(Integer.parseInt(fc.label));
                 }
             }
@@ -256,19 +278,12 @@ public class bondGraph {
         s_t_Belonging.clear();
         s_t_Belonging.addAll(removeDup);
     }
-    private int bellmanFord(ArrayList cutPath, int source, List<Integer> path, int dest, int tao){
-        ArrayList<ArrayList<Pair<Integer, Integer>>> bellman = new ArrayList<ArrayList<Pair<Integer,Integer>>>();
-        for (faceVertex fe : face_vertices){
-            bellman.add(new ArrayList<Pair<Integer, Integer>>());
-        }
-        bellmanGraph graphOfBellmanFord = new bellmanGraph(face_vertices.size(), totalAmountOfEdges);
+    private void makeBellmanGraph(bellmanGraph graphOfBellmanFord){
         int k = 0;
         for (faceVertex fc : face_vertices){
             for (faceEdge fe : fc.neighbors){
-                int neg_source = 0;
-                int neg_to = 0;
-                neg_source = Integer.parseInt(fe.source);
-                neg_to = Integer.parseInt(fe.toVertex.label);
+                int neg_source = Integer.parseInt(fe.source);
+                int neg_to = Integer.parseInt(fe.toVertex.label);
 
                 if (fe.source == "-1"){
                     neg_source = face_vertices.size() - 1;
@@ -293,8 +308,17 @@ public class bondGraph {
                 }
             }
         }
-        int amountVertices = graphOfBellmanFord.V;
-        int amountEdges = graphOfBellmanFord.E;
+
+    }
+    private int bellmanFord(ArrayList cutPath, int source, List<Integer> path, int dest, int tao){
+        ArrayList<ArrayList<Pair<Integer, Integer>>> bellman = new ArrayList<ArrayList<Pair<Integer,Integer>>>();
+        for (faceVertex _ : face_vertices){
+            bellman.add(new ArrayList<Pair<Integer, Integer>>());
+        }
+        bellmanGraph graphOfBellmanFord = new bellmanGraph(face_vertices.size(), totalAmountOfEdges);
+        makeBellmanGraph(graphOfBellmanFord);
+        int amountVertices = graphOfBellmanFord.amountOfV;
+        int amountEdges = graphOfBellmanFord.amountOfE;
         int dist[] = new int[amountVertices];
         int pred[] = new int[amountVertices];
         ArrayList<Pair<Integer, Integer>> cameFrom = new ArrayList<Pair<Integer, Integer>>();
@@ -304,52 +328,46 @@ public class bondGraph {
             cameFrom.add(new Pair<>(0, 0));
         }
         dist[source] = 0;
-        pred[source] = -10;
+        pred[source] = -2;
 
-        for (int i = 1; i < amountVertices; ++i)
-        {
-            for (int j = 0; j < amountEdges; j++)
-            {
+        int firstFlag;
+        for (int i = 1; i < amountVertices; ++i){
+            for (int j = 0; j < amountEdges; j++){
                 int u = graphOfBellmanFord.edge[j].src;
                 int v = graphOfBellmanFord.edge[j].dest;
                 int weight = graphOfBellmanFord.edge[j].weight;
                 int id = graphOfBellmanFord.edge[j].id;
-                if (dist[u]!=Integer.MAX_VALUE &&
-                        dist[u]+weight<dist[v] && v != source) {
+                if (dist[u] != Integer.MAX_VALUE &&
+                        dist[u] + weight < dist[v] && v != source) {
                     Pair<Integer, Integer> p = new Pair<>(id, u);
-                    int flagg = 0;
+                    firstFlag = 0;
                     ArrayList<Integer> values = new ArrayList<>();
-
-
-                    for (Pair ppp : bellman.get(v)){
-                        if (Integer.valueOf((int)ppp.getKey()) == id){
-                            flagg = 1;
+                    for (Pair p_ : bellman.get(v)){
+                        if (Integer.valueOf((int)p_.getKey()) == id){
+                            firstFlag = 1;
                         }
-                        values.add(Integer.valueOf((int)ppp.getValue()));
+                        values.add(Integer.valueOf((int)p_.getValue()));
                     }
 
                     values.add(u);
                     for (Integer val : values) {
-                        for (Pair ppp : bellman.get(val)) {
-                            if (Integer.valueOf((int)ppp.getKey()) == id){
-                                flagg = 1;
+                        for (Pair p_ : bellman.get(val)) {
+                            if (Integer.valueOf((int)p_.getKey()) == id){
+                                firstFlag = 1;
                             }
                         }
                     }
                     ArrayList<Pair<Integer, Integer>> holder = new ArrayList<Pair<Integer, Integer>>();
-                    if (flagg == 0){
-                        for (Pair ppp : bellman.get(v)){
-                            if (Integer.valueOf((int)ppp.getValue()) == u){
-
-                            }
-                            else{
-                                holder.add(ppp);
+                    if (firstFlag == 0){
+                        for (Pair p_ : bellman.get(v)){
+                            if (!(Integer.valueOf((int)p_.getValue()) == u)){
+                                holder.add(p_);
                             }
                         }
                         bellman.set(v, holder);
                         bellman.get(v).add(p);
                     }
-                    if (flagg == 0){
+                    if (firstFlag == 0){
                         dist[v] = dist[u] + weight;
                         pred[v] = u;
                     }
@@ -362,16 +380,16 @@ public class bondGraph {
                         }
                     }
                     for (bellmanGraph.bellmanEdge e : graphOfBellmanFord.edge){
-                        int thing = 0;
+                        int destroyFlag = 0;
                         Pair<Integer, Integer> destroyer = new Pair<>(e.org_dest, e.org_src);
                         Pair<Integer, Integer> reyortsed = new Pair<>(e.org_src, e.org_dest);
                         for (Pair pp : cameFrom){
                             if (pp.getKey() == destroyer.getKey() && pp.getValue() == destroyer.getValue()
                                     || pp.getKey() == reyortsed.getKey() && pp.getValue() == reyortsed.getValue()){
-                                thing = 1;
+                                destroyFlag = 1;
                             }
                         }
-                        if (thing == 1){
+                        if (destroyFlag == 1){
                             e.flag = 2;
                         }
                         else{
@@ -381,31 +399,31 @@ public class bondGraph {
                 }
             }
         }
-        int counter = 0;
-        Iterator<ArrayList<Pair<Integer, Integer>>> okok = bellman.iterator();
-        ArrayList<Integer> hol = new ArrayList<>();
-        while (okok.hasNext()){
-            ArrayList<Pair<Integer, Integer>> chale = okok.next();
-            Iterator<Pair<Integer, Integer>> kkk = chale.iterator();
-            while(kkk.hasNext()){
-                Pair<Integer, Integer> po = kkk.next();
-                if (po.getValue() == pred[counter]){
-                    hol.add(po.getKey());
+        int iterator = 0;
+        Iterator<ArrayList<Pair<Integer, Integer>>> bellIterator = bellman.iterator();
+        ArrayList<Integer> bellBuffer = new ArrayList<>();
+        while (bellIterator.hasNext()){
+            ArrayList<Pair<Integer, Integer>> nextBellIt = bellIterator.next();
+            Iterator<Pair<Integer, Integer>> bellItIterator = nextBellIt.iterator();
+            while(bellItIterator.hasNext()){
+                Pair<Integer, Integer> po = bellItIterator.next();
+                if (po.getValue() == pred[iterator]){
+                    bellBuffer.add(po.getKey());
                 }
             }
-            counter++;
+            iterator++;
         }
         ArrayList<Integer> realPath = new ArrayList<>();
         for (bellmanGraph.bellmanEdge e : graphOfBellmanFord.edge){
-            for (Integer ahh : hol){
-                if (e.id == ahh){
+            for (Integer i : bellBuffer){
+                if (e.id == i){
                     e.flag = 1;
                     realPath.add(e.id);
                 }
             }
         }
         dist[source] = Integer.MAX_VALUE;
-        int finalflag = 0;
+        int cycleFlag = 0;
         for (int j = 0; j < amountEdges; ++j)
         {
             int u = graphOfBellmanFord.edge[j].src;
@@ -414,25 +432,25 @@ public class bondGraph {
             int f = graphOfBellmanFord.edge[j].flag;
             int id = graphOfBellmanFord.edge[j].id;
             if (u != source && dist[u] != Integer.MAX_VALUE &&
-                    dist[u]+weight < tao  && f != 1 && v == source) {
+                    dist[u] + weight < tao  && f != 1 && v == source) {
                 dist[v] = dist[u] + weight;
                 pred[v] = u;
                 Pair<Integer, Integer> pp = new Pair<>(id, u);
                 bellman.get(v).add(pp);
                 realPath.add(id);
-                finalflag = 1;
+                cycleFlag = 1;
                 break;
             }
         }
 
         path.clear();
-        int is_flag = 0;
-        for (Integer p : pred){
+        int secondFlag = 0;
+        for (Integer _ : pred){
             int previous = pred[dest];
             if (previous == Integer.MAX_VALUE){
                 path.add(dest);
                 if (dest == source){
-                    is_flag = 1;
+                    secondFlag = 1;
                 }
                 break;
             }
@@ -440,39 +458,25 @@ public class bondGraph {
                 path.add(previous);
                 dest = previous;
                 if (dest == source){
-                    is_flag = 1;
+                    secondFlag = 1;
                 }
             }
             dest = previous;
-            if (dest == -10){
+            if (dest == -2){
                 return 0;
             }
         }
-        int countah = 1;
-        for (Integer ah : path){
-            if (countah <= path.size() - 1){
-                Iterator<Pair<Integer, Integer>> last = bellman.get(ah).iterator();
-                while(last.hasNext()){
-                    Pair<Integer, Integer> po = last.next();
-                    if(po.getValue() == path.get(countah)){
-
-                    }
-                }
-            }
-            countah++;
-        }
-
-        ArrayList<Integer> oneMoreTime = new ArrayList<>();
+        ArrayList<Integer> buffer = new ArrayList<>();
         ArrayList<Integer> idPath = new ArrayList<>();
         for (int j = 1; j < path.size(); j++){
-            oneMoreTime.add(path.get(j));
+            buffer.add(path.get(j));
         }
         for (int s = 0; s < path.size(); s++){
-            if (s < oneMoreTime.size()){
+            if (s < buffer.size()){
                 Iterator<Pair<Integer, Integer>> com = bellman.get(path.get(s)).iterator();
                 while(com.hasNext()){
                     Pair<Integer, Integer> po = com.next();
-                    if (po.getValue() == oneMoreTime.get(s)){
+                    if (po.getValue() == buffer.get(s)){
                         idPath.add(po.getKey());
                     }
                 }
@@ -500,36 +504,34 @@ public class bondGraph {
             }
         }
         ArrayList<Integer> indices = new ArrayList<>();
-        int count = 0;
+        int firstCounter = 0;
         int flag = 0;
         for (Pair p : finalPath){
-            int counttwo = 0;
+            int secondCounter = 0;
             for (Pair pp : finalPath){
-                if (count == counttwo){
+                if (firstCounter == secondCounter){
 
                 }
                 else if (p.getValue() == pp.getKey() && p.getKey()== pp.getValue()){
                     for (Integer i : indices){
-                        if (i == counttwo){
+                        if (i == secondCounter){
                             flag = 1;
                         }
                     }
                     if (flag == 0){
-                        indices.add(count);
+                        indices.add(firstCounter);
                     }
                     flag = 0;
                 }
-                counttwo++;
+                secondCounter++;
             }
-            count++;
+            firstCounter++;
         }
 
-        Set<Pair<Integer, Integer>> thefinalPath = new HashSet<>();
-        for (Integer i : indices){
-            thefinalPath.add(finalPath.get(i));
-        }
-        cutPath.addAll(thefinalPath);
-        if (finalflag == 1 && dist[source] < tao && is_flag != 0){
+        if (cycleFlag == 1 && dist[source] < tao && secondFlag != 0){
+            for (Integer i : indices){
+                cutPath.add(finalPath.get(i));
+            }
             return 1;
         }
         else{
@@ -546,20 +548,20 @@ public class bondGraph {
             if (v.northNeighbor != null && v.northNeighbor.direction != null
                     && !v.northNeighbor.direction.isEmpty()
                     && v.northNeighbor.taken == 0){
-                Pair<String, String> check_pair = new Pair<>(v.tileLabel, v.northNeighbor.toVertex.tileLabel);
-                Pair<String, String> r_check_pair = new Pair<>(v.northNeighbor.toVertex.tileLabel, v.tileLabel);
+                Pair<String, String> check_pair = new Pair<>(v.vertexLabel, v.northNeighbor.toVertex.vertexLabel);
+                Pair<String, String> r_check_pair = new Pair<>(v.northNeighbor.toVertex.vertexLabel, v.vertexLabel);
                 for (faceVertex fc : face_vertices){
                     for (Pair fe : fc.edges){
                         if (check_pair.equals(fe)){
                             if (v.northNeighbor.inside == -1){
                                 flag = 1;
-                                fc.neighbors.add(new faceEdge(v.tileLabel, v.northNeighbor.toVertex.tileLabel, fc.label, face_vertices.get(face_vertices.size() - 1), v.northNeighbor.bondStrength));
-                                face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.northNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(face_vertices.size() - 1).label, fc, v.northNeighbor.bondStrength));
+                                fc.neighbors.add(new faceEdge(v.vertexLabel, v.northNeighbor.toVertex.vertexLabel, fc.label, face_vertices.get(face_vertices.size() - 1), v.northNeighbor.bondStrength));
+                                face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.northNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(face_vertices.size() - 1).label, fc, v.northNeighbor.bondStrength));
                             }
                             else{
                                 flag = 1;
-                                fc.neighbors.add(new faceEdge(v.tileLabel, v.northNeighbor.toVertex.tileLabel, fc.label, face_vertices.get(v.northNeighbor.inside), v.northNeighbor.bondStrength));
-                                face_vertices.get(v.northNeighbor.inside).neighbors.add(new faceEdge(v.northNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(v.northNeighbor.inside).label, fc, v.northNeighbor.bondStrength));
+                                fc.neighbors.add(new faceEdge(v.vertexLabel, v.northNeighbor.toVertex.vertexLabel, fc.label, face_vertices.get(v.northNeighbor.inside), v.northNeighbor.bondStrength));
+                                face_vertices.get(v.northNeighbor.inside).neighbors.add(new faceEdge(v.northNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(v.northNeighbor.inside).label, fc, v.northNeighbor.bondStrength));
                             }
                         }
                     }
@@ -568,21 +570,16 @@ public class bondGraph {
                     for (faceVertex fc : face_vertices){
                         for (Pair fe : fc.edges){
                             if (r_check_pair.equals(fe)){
-                                if (v.northNeighbor.inside == -1){
-                                    flag = 1;
-                                }
-                                else{
-                                    flag = 1;
-                                }
+                                flag = 1;
                             }
                         }
                     }
                     if (flag == 0){
                         if (v.northNeighbor.inside == -1){
-                            face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.northNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(face_vertices.size() - 1).label, face_vertices.get(face_vertices.size() - 1), v.northNeighbor.bondStrength));
+                            face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.northNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(face_vertices.size() - 1).label, face_vertices.get(face_vertices.size() - 1), v.northNeighbor.bondStrength));
                         }
                         else{
-                            face_vertices.get(v.northNeighbor.inside).neighbors.add(new faceEdge(v.northNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(v.northNeighbor.inside).label, face_vertices.get(v.northNeighbor.inside), v.northNeighbor.bondStrength));
+                            face_vertices.get(v.northNeighbor.inside).neighbors.add(new faceEdge(v.northNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(v.northNeighbor.inside).label, face_vertices.get(v.northNeighbor.inside), v.northNeighbor.bondStrength));
                         }
 
                     }
@@ -592,20 +589,20 @@ public class bondGraph {
             if (v.eastNeighbor != null && v.eastNeighbor.direction != null
                     && !v.eastNeighbor.direction.isEmpty()
                     && v.eastNeighbor.taken == 0){
-                Pair<String, String> check_pair = new Pair<>(v.tileLabel, v.eastNeighbor.toVertex.tileLabel);
-                Pair<String, String> r_check_pair = new Pair<>(v.eastNeighbor.toVertex.tileLabel, v.tileLabel);
+                Pair<String, String> check_pair = new Pair<>(v.vertexLabel, v.eastNeighbor.toVertex.vertexLabel);
+                Pair<String, String> r_check_pair = new Pair<>(v.eastNeighbor.toVertex.vertexLabel, v.vertexLabel);
                 for (faceVertex fc : face_vertices){
                     for (Pair fe : fc.edges){
                         if (check_pair.equals(fe)){
                             if (v.eastNeighbor.inside == -1){
                                 flag = 1;
-                                fc.neighbors.add(new faceEdge(v.tileLabel, v.eastNeighbor.toVertex.tileLabel, fc.label, face_vertices.get(face_vertices.size() - 1), v.eastNeighbor.bondStrength));
-                                face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.eastNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(face_vertices.size() - 1).label, fc, v.eastNeighbor.bondStrength));
+                                fc.neighbors.add(new faceEdge(v.vertexLabel, v.eastNeighbor.toVertex.vertexLabel, fc.label, face_vertices.get(face_vertices.size() - 1), v.eastNeighbor.bondStrength));
+                                face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.eastNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(face_vertices.size() - 1).label, fc, v.eastNeighbor.bondStrength));
                             }
                             else{
                                 flag = 1;
-                                fc.neighbors.add(new faceEdge(v.tileLabel, v.eastNeighbor.toVertex.tileLabel, fc.label, face_vertices.get(v.eastNeighbor.inside), v.eastNeighbor.bondStrength));
-                                face_vertices.get(v.eastNeighbor.inside).neighbors.add(new faceEdge(v.eastNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(v.eastNeighbor.inside).label, fc, v.eastNeighbor.bondStrength));
+                                fc.neighbors.add(new faceEdge(v.vertexLabel, v.eastNeighbor.toVertex.vertexLabel, fc.label, face_vertices.get(v.eastNeighbor.inside), v.eastNeighbor.bondStrength));
+                                face_vertices.get(v.eastNeighbor.inside).neighbors.add(new faceEdge(v.eastNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(v.eastNeighbor.inside).label, fc, v.eastNeighbor.bondStrength));
                             }
                         }
                     }
@@ -614,21 +611,16 @@ public class bondGraph {
                     for (faceVertex fc : face_vertices){
                         for (Pair fe : fc.edges){
                             if (r_check_pair.equals(fe)){
-                                if (v.eastNeighbor.inside == -1){
-                                    flag = 1;
-                                }
-                                else{
-                                    flag = 1;
-                                }
+                                flag = 1;
                             }
                         }
                     }
                     if (flag == 0){
                         if (v.eastNeighbor.inside == -1){
-                            face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.eastNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(face_vertices.size() - 1).label, face_vertices.get(face_vertices.size() - 1), v.eastNeighbor.bondStrength));
+                            face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.eastNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(face_vertices.size() - 1).label, face_vertices.get(face_vertices.size() - 1), v.eastNeighbor.bondStrength));
                         }
                         else{
-                            face_vertices.get(v.eastNeighbor.inside).neighbors.add(new faceEdge(v.eastNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(v.eastNeighbor.inside).label, face_vertices.get(v.eastNeighbor.inside), v.eastNeighbor.bondStrength));
+                            face_vertices.get(v.eastNeighbor.inside).neighbors.add(new faceEdge(v.eastNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(v.eastNeighbor.inside).label, face_vertices.get(v.eastNeighbor.inside), v.eastNeighbor.bondStrength));
                         }
 
                     }
@@ -638,20 +630,20 @@ public class bondGraph {
             if (v.westNeighbor != null && v.westNeighbor.direction != null
                     && !v.westNeighbor.direction.isEmpty()
                     && v.westNeighbor.taken == 0){
-                Pair<String, String> check_pair = new Pair<>(v.tileLabel, v.westNeighbor.toVertex.tileLabel);
-                Pair<String, String> r_check_pair = new Pair<>(v.westNeighbor.toVertex.tileLabel, v.tileLabel);
+                Pair<String, String> check_pair = new Pair<>(v.vertexLabel, v.westNeighbor.toVertex.vertexLabel);
+                Pair<String, String> r_check_pair = new Pair<>(v.westNeighbor.toVertex.vertexLabel, v.vertexLabel);
                 for (faceVertex fc : face_vertices){
                     for (Pair fe : fc.edges){
                         if (check_pair.equals(fe)){
                             if (v.westNeighbor.inside == -1){
                                 flag = 1;
-                                fc.neighbors.add(new faceEdge(v.tileLabel, v.westNeighbor.toVertex.tileLabel, fc.label, face_vertices.get(face_vertices.size() - 1), v.westNeighbor.bondStrength));
-                                face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.westNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(face_vertices.size() - 1).label, fc, v.westNeighbor.bondStrength));
+                                fc.neighbors.add(new faceEdge(v.vertexLabel, v.westNeighbor.toVertex.vertexLabel, fc.label, face_vertices.get(face_vertices.size() - 1), v.westNeighbor.bondStrength));
+                                face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.westNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(face_vertices.size() - 1).label, fc, v.westNeighbor.bondStrength));
                             }
                             else{
                                 flag = 1;
-                                fc.neighbors.add(new faceEdge(v.tileLabel, v.westNeighbor.toVertex.tileLabel, fc.label, face_vertices.get(v.westNeighbor.inside), v.westNeighbor.bondStrength));
-                                face_vertices.get(v.westNeighbor.inside).neighbors.add(new faceEdge(v.westNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(v.westNeighbor.inside).label, fc, v.westNeighbor.bondStrength));
+                                fc.neighbors.add(new faceEdge(v.vertexLabel, v.westNeighbor.toVertex.vertexLabel, fc.label, face_vertices.get(v.westNeighbor.inside), v.westNeighbor.bondStrength));
+                                face_vertices.get(v.westNeighbor.inside).neighbors.add(new faceEdge(v.westNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(v.westNeighbor.inside).label, fc, v.westNeighbor.bondStrength));
                             }
                         }
                     }
@@ -660,21 +652,16 @@ public class bondGraph {
                     for (faceVertex fc : face_vertices){
                         for (Pair fe : fc.edges){
                             if (r_check_pair.equals(fe)){
-                                if (v.westNeighbor.inside == -1){
-                                    flag = 1;
-                                }
-                                else{
-                                    flag = 1;
-                                }
+                                flag = 1;
                             }
                         }
                     }
                     if (flag == 0){
                         if (v.westNeighbor.inside == -1){
-                            face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.westNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(face_vertices.size() - 1).label, face_vertices.get(face_vertices.size() - 1), v.westNeighbor.bondStrength));
+                            face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.westNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(face_vertices.size() - 1).label, face_vertices.get(face_vertices.size() - 1), v.westNeighbor.bondStrength));
                         }
                         else{
-                            face_vertices.get(v.westNeighbor.inside).neighbors.add(new faceEdge(v.westNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(v.westNeighbor.inside).label, face_vertices.get(v.westNeighbor.inside), v.westNeighbor.bondStrength));
+                            face_vertices.get(v.westNeighbor.inside).neighbors.add(new faceEdge(v.westNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(v.westNeighbor.inside).label, face_vertices.get(v.westNeighbor.inside), v.westNeighbor.bondStrength));
                         }
 
                     }
@@ -684,20 +671,20 @@ public class bondGraph {
             if (v.southNeighbor != null && v.southNeighbor.direction != null
                     && !v.southNeighbor.direction.isEmpty()
                     && v.southNeighbor.taken == 0){
-                Pair<String, String> check_pair = new Pair<>(v.tileLabel, v.southNeighbor.toVertex.tileLabel);
-                Pair<String, String> r_check_pair = new Pair<>(v.southNeighbor.toVertex.tileLabel, v.tileLabel);
+                Pair<String, String> check_pair = new Pair<>(v.vertexLabel, v.southNeighbor.toVertex.vertexLabel);
+                Pair<String, String> r_check_pair = new Pair<>(v.southNeighbor.toVertex.vertexLabel, v.vertexLabel);
                 for (faceVertex fc : face_vertices){
                     for (Pair fe : fc.edges){
                         if (check_pair.equals(fe)){
                             if (v.southNeighbor.inside == -1){
                                 flag = 1;
-                                fc.neighbors.add(new faceEdge(v.tileLabel, v.southNeighbor.toVertex.tileLabel, fc.label, face_vertices.get(face_vertices.size() - 1), v.southNeighbor.bondStrength));
-                                face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.southNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(face_vertices.size() - 1).label, fc, v.southNeighbor.bondStrength));
+                                fc.neighbors.add(new faceEdge(v.vertexLabel, v.southNeighbor.toVertex.vertexLabel, fc.label, face_vertices.get(face_vertices.size() - 1), v.southNeighbor.bondStrength));
+                                face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.southNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(face_vertices.size() - 1).label, fc, v.southNeighbor.bondStrength));
                             }
                             else{
                                 flag = 1;
-                                fc.neighbors.add(new faceEdge(v.tileLabel, v.southNeighbor.toVertex.tileLabel, fc.label, face_vertices.get(v.southNeighbor.inside), v.southNeighbor.bondStrength));
-                                face_vertices.get(v.southNeighbor.inside).neighbors.add(new faceEdge(v.southNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(v.southNeighbor.inside).label, fc, v.southNeighbor.bondStrength));
+                                fc.neighbors.add(new faceEdge(v.vertexLabel, v.southNeighbor.toVertex.vertexLabel, fc.label, face_vertices.get(v.southNeighbor.inside), v.southNeighbor.bondStrength));
+                                face_vertices.get(v.southNeighbor.inside).neighbors.add(new faceEdge(v.southNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(v.southNeighbor.inside).label, fc, v.southNeighbor.bondStrength));
                             }
                         }
                     }
@@ -706,21 +693,16 @@ public class bondGraph {
                     for (faceVertex fc : face_vertices){
                         for (Pair fe : fc.edges){
                             if (r_check_pair.equals(fe)){
-                                if (v.southNeighbor.inside == -1){
-                                    flag = 1;
-                                }
-                                else{
-                                    flag = 1;
-                                }
+                                flag = 1;
                             }
                         }
                     }
                     if (flag == 0){
                         if (v.southNeighbor.inside == -1){
-                            face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.southNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(face_vertices.size() - 1).label, face_vertices.get(face_vertices.size() - 1), v.southNeighbor.bondStrength));
+                            face_vertices.get(face_vertices.size() - 1).neighbors.add(new faceEdge(v.southNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(face_vertices.size() - 1).label, face_vertices.get(face_vertices.size() - 1), v.southNeighbor.bondStrength));
                         }
                         else{
-                            face_vertices.get(v.southNeighbor.inside).neighbors.add(new faceEdge(v.southNeighbor.toVertex.tileLabel, v.tileLabel, face_vertices.get(v.southNeighbor.inside).label, face_vertices.get(v.southNeighbor.inside), v.southNeighbor.bondStrength));
+                            face_vertices.get(v.southNeighbor.inside).neighbors.add(new faceEdge(v.southNeighbor.toVertex.vertexLabel, v.vertexLabel, face_vertices.get(v.southNeighbor.inside).label, face_vertices.get(v.southNeighbor.inside), v.southNeighbor.bondStrength));
                         }
 
                     }
@@ -773,33 +755,31 @@ public class bondGraph {
                 }
                 face_vertices.get(i).strengths.add(preFaceVertices.get(i).get(j).southNeighbor.bondStrength);
             }
-            Pair<String, String> pair = new Pair(preFaceVertices.get(i).get(j).tileLabel, preFaceVertices.get(i).get(j + 1).tileLabel);
+            Pair<String, String> pair = new Pair(preFaceVertices.get(i).get(j).vertexLabel, preFaceVertices.get(i).get(j + 1).vertexLabel);
             face_vertices.get(i).edges.add(pair);
         }
     }
     private void setUpEdgesDualGraph(){
-        int thisone = 0;
+        int iterator = 0;
         for (faceVertex fv : face_vertices){
             for (Pair e : fv.edges){
-                preConnectEdges(e, thisone);
+                preConnectEdges(e, iterator);
             }
-            thisone++;
+            iterator++;
         }
     }
     private void preConnectEdges(Pair e,  int which) {
-        int count = 0;
+        int iterator = 0;
         Pair<String, String> e_reversed = new Pair(e.getValue(), e.getKey());
         for (faceVertex fc : face_vertices) {
-            if (count == which) {
-
-            } else {
+            if (!(iterator == which)) {
                 for (Pair vv : fc.edges) {
                     if (e_reversed.equals(vv) || e.equals(vv)){
-                        preCreateEdgeBetweenFaces(vv.getKey().toString(), vv.getValue().toString(), which, count);
+                        preCreateEdgeBetweenFaces(vv.getKey().toString(), vv.getValue().toString(), which, iterator);
                     }
                 }
             }
-            count++;
+            iterator++;
         }
     }
     private void preCreateEdgeBetweenFaces(String x, String y, int which, int count){
@@ -807,38 +787,38 @@ public class bondGraph {
         String firstName = "";
         String secondName = "";
         for (Vertex v : vertices){
-            if (v.tileLabel == x) {
+            if (v.vertexLabel == x) {
                 if (v.northNeighbor != null && v.northNeighbor.direction != null
                         && !v.northNeighbor.direction.isEmpty()
-                        && v.northNeighbor.toVertex.tileLabel.equals(y)) {
+                        && v.northNeighbor.toVertex.vertexLabel.equals(y)) {
                     str = v.northNeighbor.bondStrength;
                     v.northNeighbor.taken = 1;
-                    firstName = v.tileLabel;
-                    secondName = v.northNeighbor.toVertex.tileLabel;
+                    firstName = v.vertexLabel;
+                    secondName = v.northNeighbor.toVertex.vertexLabel;
                 }
                 if (v.eastNeighbor != null && v.eastNeighbor.direction != null
                         && !v.eastNeighbor.direction.isEmpty()
-                        && v.eastNeighbor.toVertex.tileLabel.equals(y)) {
+                        && v.eastNeighbor.toVertex.vertexLabel.equals(y)) {
                     str = v.eastNeighbor.bondStrength;
                     v.eastNeighbor.taken = 1;
-                    firstName = v.tileLabel;
-                    secondName = v.eastNeighbor.toVertex.tileLabel;
+                    firstName = v.vertexLabel;
+                    secondName = v.eastNeighbor.toVertex.vertexLabel;
                 }
                 if (v.westNeighbor != null && v.westNeighbor.direction != null
                         && !v.westNeighbor.direction.isEmpty()
-                        && v.westNeighbor.toVertex.tileLabel.equals(y)) {
+                        && v.westNeighbor.toVertex.vertexLabel.equals(y)) {
                     str = v.westNeighbor.bondStrength;
                     v.westNeighbor.taken = 1;
-                    firstName = v.tileLabel;
-                    secondName = v.westNeighbor.toVertex.tileLabel;
+                    firstName = v.vertexLabel;
+                    secondName = v.westNeighbor.toVertex.vertexLabel;
                 }
                 if (v.southNeighbor != null && v.southNeighbor.direction != null
                         && !v.southNeighbor.direction.isEmpty()
-                        && v.southNeighbor.toVertex.tileLabel.equals(y)) {
+                        && v.southNeighbor.toVertex.vertexLabel.equals(y)) {
                     str = v.southNeighbor.bondStrength;
                     v.southNeighbor.taken = 1;
-                    firstName = v.tileLabel;
-                    secondName = v.southNeighbor.toVertex.tileLabel;
+                    firstName = v.vertexLabel;
+                    secondName = v.southNeighbor.toVertex.vertexLabel;
                 }
                 break;
             }
@@ -930,7 +910,6 @@ public class bondGraph {
     }
     private void DFSmarking(Vertex v, int inside){
         ArrayList<Vertex> insiders = new ArrayList<>();
-
         insiders.add(v);
         do {
             for (Vertex vv : insiders) {
@@ -967,14 +946,13 @@ public class bondGraph {
             }
         }while(!insiders.isEmpty());
     }
-    private void getFaces() {
+    private void startGetFaces() {
         ArrayList<Vertex> faces = new ArrayList<Vertex>();
         for (Vertex v : vertices) {
-            if (v.neighbors.size() == 1) {
-            } else {
+            if (!(v.neighbors.size() == 1)) {
                 for (Edge e : v.neighbors) {
                     if (e.direction.equals("N")) {
-                        faces = theTrials(v, e);
+                        faces = getFaces(v, e);
                         if (!faces.isEmpty()){
                             preFaceVertices.add(faces);
                         }
@@ -1013,10 +991,7 @@ public class bondGraph {
         int j = 0;
         for (ArrayList<Vertex> path : preFaceVertices){
             for (Vertex v : path){
-                if (i >= path.size() - 1){
-
-                }
-                else{
+                if (!(i >= path.size() - 1)){
                     if (v.northNeighbor != null && v.northNeighbor.direction != null
                             && !v.northNeighbor.direction.isEmpty() && v.northNeighbor.toVertex == path.get(i + 1)){
                         v.itsBoundary.add(new Border(Integer.toString(j), "W", "E"));
@@ -1045,6 +1020,7 @@ public class bondGraph {
     }
     private int markLeafs() {
         int minimum_edge_amount = 5;
+        List<Vertex> markedOnes = new ArrayList<>();
         for (Vertex v : vertices) {
             if (v.edgeAmount == 1 && v.mark == 0) {
                 v.mark = 1;
@@ -1064,7 +1040,6 @@ public class bondGraph {
                 minimum_edge_amount = v.edgeAmount;
             }
         }
-
         return minimum_edge_amount;
     }
     private void removePathMarkings() {
@@ -1072,19 +1047,18 @@ public class bondGraph {
             v.pathMark = 0;
         }
     }
-    private ArrayList<Vertex> theTrials(Vertex v, Edge start) {
+    private ArrayList<Vertex> getFaces(Vertex v, Edge start) {
         int get_out = 0;
         if (v.northNeighbor != null && v.northNeighbor.direction != null
                 && !v.northNeighbor.direction.isEmpty()
                 && v.westNeighbor != null && v.westNeighbor.direction != null
                 && !v.westNeighbor.direction.isEmpty()){
-
         }
         else{
             get_out = 1;
         }
-        Vertex transv = new Vertex();
-        Vertex notTransv = new Vertex();
+        Vertex transv;
+        Vertex notTransv;
         int round = 0;
         int trial = 0;
         int flag = 0;
@@ -1516,7 +1490,7 @@ public class bondGraph {
                 if (!goBack.isEmpty()){
                     trial = goBackTrial.get(goBackTrial.size() - 1);
                     transv = goBack.get(goBack.size() - 1);
-                    throwPathBack(finalPath, transv);
+                    faceFinderReturn(finalPath, transv);
                     finalPath.add(transv);
                     transv.pathMark = 1;
                     goBack.remove(goBack.size() - 1);
@@ -1533,23 +1507,18 @@ public class bondGraph {
         } while (!transv.equals(v));
         removePathMarkings();
         if (flag == 1 || get_out == 1) {
-            for (Vertex d : finalPath){
-            }
-            if (!goBack.isEmpty()){
-            }
             finalPath.clear();
             return finalPath;
         } else {
             return finalPath;
         }
     }
-    private void throwPathBack(ArrayList<Vertex> finalPath, Vertex transv){
+    private void faceFinderReturn(ArrayList<Vertex> finalPath, Vertex transv){
         int i = 0;
         if (!finalPath.isEmpty()) {
             ListIterator<Vertex> ok = finalPath.listIterator(finalPath.size());
             while (ok.hasPrevious()) {
                 Vertex holder = ok.previous();
-
                 if (holder.eastNeighbor != null && holder.eastNeighbor.direction != null
                         && !holder.eastNeighbor.direction.isEmpty()
                         && holder.eastNeighbor.toVertex == transv) {

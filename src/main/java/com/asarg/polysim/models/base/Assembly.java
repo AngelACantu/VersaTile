@@ -68,47 +68,41 @@ public class Assembly extends Observable {
         frontier = new Frontier(tileSystem);
     }
 
-    public bondGraph getBondGraph(){
+    public BondGraph getBondGraph(){
         Set<Map.Entry<Coordinate, Tile>> tiles = Grid.entrySet();
-        bondGraph bondGraph = new bondGraph();
+        BondGraph bondGraph = new BondGraph();
 
         for (Map.Entry<Coordinate, Tile> mep : tiles) {
             Coordinate pt = mep.getKey();
             Tile tile = mep.getValue();
             if (tile.getGlueW() != null || tile.getGlueN() != null || tile.getGlueE() != null || tile.getGlueS() != null) {
-                bondGraph.addBondVertex(tile, tile.getLabel(), pt, tile.getGlueN(),
-                        tile.getGlueS(), tile.getGlueW(), tile.getGlueE());
+                bondGraph.addBondVertex(tile, pt);
             }
         }
-        for (bondGraph.Vertex v : bondGraph.vertices){
-            for (bondGraph.Vertex vertex : bondGraph.vertices){
-                if (v == vertex){
+        for (BondGraph.Vertex v : bondGraph.getListOfVertices()){
+            for (BondGraph.Vertex vertex : bondGraph.getListOfVertices()){
+                if (!(v == vertex)) {
+                    if (v.getLocation().getEast().equals(vertex.getLocation())) {
+                        int strength = tileSystem.getStrength(v.getTile().getGlueE(), vertex.getTile().getGlueW());
+                        if (strength != 0) {
+                            v.addEdge(v.getTile(), vertex.getTile(), vertex, strength, "E");
+                        }
+                    } else if (v.getLocation().getWest().equals(vertex.getLocation())) {
+                        int strength = tileSystem.getStrength(v.getTile().getGlueW(), vertex.getTile().getGlueE());
+                        if (strength != 0) {
+                            v.addEdge(v.getTile(), vertex.getTile(), vertex, strength, "W");
+                        }
+                    } else if (v.getLocation().getNorth().equals(vertex.getLocation())) {
+                        int strength = tileSystem.getStrength(v.getTile().getGlueN(), vertex.getTile().getGlueS());
+                        if (strength != 0) {
+                            v.addEdge(v.getTile(), vertex.getTile(), vertex, strength, "N");
+                        }
+                    } else if (v.getLocation().getSouth().equals(vertex.getLocation())) {
+                        int strength = tileSystem.getStrength(v.getTile().getGlueS(), vertex.getTile().getGlueN());
+                        if (strength != 0) {
+                            v.addEdge(v.getTile(), vertex.getTile(), vertex, strength, "S");
+                        }
 
-                }
-                else{
-                    if (v.location.getEast().equals(vertex.location)){
-                        int strength = tileSystem.getStrength(v.E, vertex.W);
-                        if (strength != 0){
-                            v.addEdge(v.thisTile, vertex.thisTile, vertex, strength, "E");
-                        }
-                    }
-                    else if (v.location.getWest().equals(vertex.location)){
-                        int strength = tileSystem.getStrength(v.W, vertex.E);
-                        if (strength != 0){
-                            v.addEdge(v.thisTile, vertex.thisTile, vertex, strength, "W");
-                        }
-                    }
-                    else if (v.location.getNorth().equals(vertex.location)){
-                        int strength = tileSystem.getStrength(v.N, vertex.S);
-                        if (strength != 0){
-                            v.addEdge(v.thisTile, vertex.thisTile, vertex, strength, "N");
-                        }
-                    }
-                    else if (v.location.getSouth().equals(vertex.location)){
-                        int strength = tileSystem.getStrength(v.S, vertex.N);
-                        if (strength != 0){
-                            v.addEdge(v.thisTile, vertex.thisTile, vertex, strength, "S");
-                        }
                     }
                 }
             }
@@ -132,28 +126,20 @@ public class Assembly extends Observable {
     public void changeTemperature(int temperature) {
         tileSystem.setTemperature(temperature);
         changeTileSystem(tileSystem);
-
-        ////////////////////////////////////////////////////////////////////////////////////
-        ////////////////////////////////////////////////////////////////////////////////////
-        //For now:
-        //Changing the temperature gets you the bond graph (works like a button)
-        bondGraph bond_graph = getBondGraph();
-        //Also, computes MinCut on the bond graph (when needed)
-        //you must pass it the temperature of the system, so it knows what cut to return
-        ArrayList<bondGraph.Edge> cutMe = bond_graph.getMinCut(tileSystem.getTemperature());
-        //here we print the edges which are to be cut
-        //each edge in the list cutMe has tileFrom and tileTo, which are of type: Tile
-        if (!cutMe.isEmpty()){
-            System.out.print("\nCut the following edges: ");
-            for (bondGraph.Edge e : cutMe){
-                System.out.print("\n" + e.tileFrom.getLabel() + "->" + e.tileTo.getLabel());
-            }
-        }
-        ////////////////////////////////////////////////////////////////////////////////////
-        ////////////////////////////////////////////////////////////////////////////////////
-        System.out.print("\nSuccess");
+        getMinCut();
     }
 
+    public List<BondGraph.Edge> getMinCut(){
+        BondGraph bond_graph = getBondGraph();
+        List<BondGraph.Edge> cutMe = bond_graph.getMinCut(tileSystem.getTemperature());
+        if (!cutMe.isEmpty()){
+            for (BondGraph.Edge e : cutMe){
+                System.out.print("\n" + e.getTileFrom().getLabel() + "->" + e.getTileTo().getLabel());
+            }
+        }
+        System.out.print("\nSuccess");
+        return cutMe;
+    }
     public void changeTileConfiguration(TileConfiguration tc) {
         tileSystem.loadTileConfiguration(tc);
         frontier.changeTileSystem(tileSystem);
